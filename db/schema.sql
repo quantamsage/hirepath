@@ -1,4 +1,4 @@
--- Job Application Tracker: database schema
+-- HirePath: database schema
 -- Run ONCE as the database owner (Supabase SQL editor, or psql as postgres).
 -- Safe to re-run: every statement is idempotent.
 --
@@ -31,6 +31,9 @@ CREATE TABLE IF NOT EXISTS jobtracker_applications (
     status         text NOT NULL DEFAULT 'Applied'
                    CHECK (status IN ('Applied', 'Interview', 'Offer', 'Rejected')),
     follow_up_date date,
+    -- When you applied. Defaults to today; imports can set it to an earlier date.
+    -- Used for the "applications per week" chart.
+    applied_on     date NOT NULL DEFAULT CURRENT_DATE,
     notes          text CHECK (notes IS NULL OR char_length(notes) <= 2000),
     created_at     timestamptz NOT NULL DEFAULT now(),
     updated_at     timestamptz NOT NULL DEFAULT now()
@@ -49,6 +52,19 @@ CREATE TABLE IF NOT EXISTS jobtracker_applications (
 -- the foreign key, so ON DELETE CASCADE from users does not scan the table.
 CREATE INDEX IF NOT EXISTS jobtracker_applications_user_status_idx
     ON jobtracker_applications (user_id, status);
+
+-- Every status an application has been in, oldest first. The board only shows
+-- the current status; this history is what lets the stats page say "reached an
+-- interview" even after an application was later rejected.
+CREATE TABLE IF NOT EXISTS jobtracker_status_events (
+    id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    application_id bigint NOT NULL REFERENCES jobtracker_applications (id) ON DELETE CASCADE,
+    status         text NOT NULL CHECK (status IN ('Applied', 'Interview', 'Offer', 'Rejected')),
+    changed_at     timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS jobtracker_status_events_application_idx
+    ON jobtracker_status_events (application_id, status);
 
 -- ---------------------------------------------------------------------------
 -- Restricted app role (least privilege)
@@ -71,6 +87,10 @@ GRANT SELECT, INSERT ON jobtracker_users TO jobtracker_app;
 -- Applications: full CRUD on rows, but no ALTER, DROP or TRUNCATE.
 GRANT SELECT, INSERT, UPDATE, DELETE ON jobtracker_applications TO jobtracker_app;
 
+-- History is append-only for the app: no UPDATE or DELETE (rows go away only
+-- through ON DELETE CASCADE when the application itself is deleted).
+GRANT SELECT, INSERT ON jobtracker_status_events TO jobtracker_app;
+
 -- ---------------------------------------------------------------------------
 -- Row-level security
 -- ---------------------------------------------------------------------------
@@ -81,6 +101,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON jobtracker_applications TO jobtracker_ap
 
 ALTER TABLE jobtracker_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobtracker_applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE jobtracker_status_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS jobtracker_app_users ON jobtracker_users;
 CREATE POLICY jobtracker_app_users ON jobtracker_users
@@ -90,15 +111,19 @@ DROP POLICY IF EXISTS jobtracker_app_applications ON jobtracker_applications;
 CREATE POLICY jobtracker_app_applications ON jobtracker_applications
     FOR ALL TO jobtracker_app USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS jobtracker_app_status_events ON jobtracker_status_events;
+CREATE POLICY jobtracker_app_status_events ON jobtracker_status_events
+    FOR ALL TO jobtracker_app USING (true) WITH CHECK (true);
+
 -- Supabase grants table access to anon/authenticated by default. Remove it
 -- (only if those roles exist, so this file also runs on plain Postgres).
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-        REVOKE ALL ON jobtracker_users, jobtracker_applications FROM anon;
+        REVOKE ALL ON jobtracker_users, jobtracker_applications, jobtracker_status_events FROM anon;
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-        REVOKE ALL ON jobtracker_users, jobtracker_applications FROM authenticated;
+        REVOKE ALL ON jobtracker_users, jobtracker_applications, jobtracker_status_events FROM authenticated;
     END IF;
 END
 $$;

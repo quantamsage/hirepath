@@ -13,8 +13,9 @@ def create_pool(database_url: str) -> ConnectionPool:
         conninfo=database_url,
         min_size=1,
         max_size=5,
-        # autocommit: every operation here is a single SQL statement, so each one
-        # commits immediately, before the response is sent.
+        # autocommit: single statements commit immediately, before the response is
+        # sent. Multi-statement writes (create + history, import) use an explicit
+        # conn.transaction() in repository.py.
         kwargs={"row_factory": dict_row, "autocommit": True},
         open=False,
     )
