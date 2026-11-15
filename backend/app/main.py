@@ -32,7 +32,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Interactive docs only outside production. docs/openapi.yaml is the contract.
     docs_on = not settings.is_production
     app = FastAPI(
-        title="Job Application Tracker API",
+        title="HirePath API",
         lifespan=lifespan,
         docs_url="/docs" if docs_on else None,
         redoc_url=None,

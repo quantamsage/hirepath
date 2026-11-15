@@ -39,7 +39,7 @@ export default function AuthForm({ mode, notice }: { mode: Mode; notice?: string
     <main className="auth">
       <div className="auth-brand">
         <span className="brand-mark" aria-hidden="true" />
-        Job Application Tracker
+        HirePath
       </div>
       <form className="auth-card" onSubmit={handleSubmit} noValidate>
         <h1>{copy.title}</h1>
