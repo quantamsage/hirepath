@@ -44,7 +44,7 @@ def app_database_url() -> str:
         pytest.exit("Refusing to run: the test database name must contain 'test'.")
 
     with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-        conn.execute("DROP TABLE IF EXISTS jobtracker_applications, jobtracker_users CASCADE")
+        conn.execute("DROP TABLE IF EXISTS jobtracker_status_events, jobtracker_applications, jobtracker_users CASCADE")
         conn.execute(SCHEMA_FILE.read_text())
         conn.execute(f"ALTER ROLE jobtracker_app WITH PASSWORD '{APP_ROLE_TEST_PASSWORD}'")
 
@@ -59,7 +59,9 @@ def admin_conn(app_database_url):
 
 @pytest.fixture
 def client(app_database_url, admin_conn):
-    admin_conn.execute("TRUNCATE jobtracker_applications, jobtracker_users RESTART IDENTITY CASCADE")
+    admin_conn.execute(
+        "TRUNCATE jobtracker_status_events, jobtracker_applications, jobtracker_users RESTART IDENTITY CASCADE"
+    )
     app = create_app(make_settings(app_database_url))
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client

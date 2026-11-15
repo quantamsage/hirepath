@@ -5,7 +5,9 @@ import pytest
 
 @pytest.fixture
 def app_conn(app_database_url, admin_conn):
-    admin_conn.execute("TRUNCATE jobtracker_applications, jobtracker_users RESTART IDENTITY CASCADE")
+    admin_conn.execute(
+        "TRUNCATE jobtracker_status_events, jobtracker_applications, jobtracker_users RESTART IDENTITY CASCADE"
+    )
     with psycopg.connect(app_database_url, autocommit=True) as conn:
         yield conn
 
@@ -61,3 +63,10 @@ def test_check_constraints_back_up_the_api(app_conn, column, value):
 def test_uppercase_email_rejected_by_database(app_conn):
     with pytest.raises(psycopg.errors.CheckViolation):
         app_conn.execute("INSERT INTO jobtracker_users (email, password_hash) VALUES ('A@B.co', 'h')")
+
+
+def test_app_role_cannot_rewrite_status_history(app_conn):
+    for statement in ("UPDATE jobtracker_status_events SET status = 'Offer'",
+                      "DELETE FROM jobtracker_status_events"):
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            app_conn.execute(statement)
