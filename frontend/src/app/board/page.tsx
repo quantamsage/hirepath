@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import ApplicationCard from "@/components/ApplicationCard";
 import ApplicationDialog from "@/components/ApplicationDialog";
+import CsvTools from "@/components/CsvTools";
+import TopBar from "@/components/TopBar";
 import { api, ApiError, clearToken, getToken } from "@/lib/api";
 import { STATUSES, type Application, type ApplicationInput, type ApplicationStatus } from "@/lib/types";
 
@@ -85,27 +87,13 @@ export default function BoardPage() {
     }
   }
 
-  function logOut() {
-    clearToken();
-    router.replace("/login");
-  }
-
   // Grouping for display only; every value shown comes from the backend.
   const byStatus = (status: ApplicationStatus) => (applications ?? []).filter((a) => a.status === status);
   const dueCount = (applications ?? []).filter((a) => a.follow_up_due).length;
 
   return (
     <div className="page">
-      <header className="topbar">
-        <div className="auth-brand">
-          <span className="brand-mark" aria-hidden="true" />
-          Job Application Tracker
-        </div>
-        <div className="topbar-user">
-          {email && <span className="topbar-email">{email}</span>}
-          <button type="button" className="btn btn-quiet" onClick={logOut}>Log out</button>
-        </div>
-      </header>
+      <TopBar email={email} />
 
       <main className="board-page">
         <div className="board-head">
@@ -119,9 +107,12 @@ export default function BoardPage() {
               </p>
             )}
           </div>
-          <button type="button" className="btn btn-primary" onClick={() => setEditing(null)}>
-            Add application
-          </button>
+          <div className="board-actions">
+            <CsvTools onImported={load} onError={handleError} />
+            <button type="button" className="btn btn-primary" onClick={() => setEditing(null)}>
+              Add application
+            </button>
+          </div>
         </div>
 
         {error && (
