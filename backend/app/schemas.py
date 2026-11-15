@@ -65,6 +65,7 @@ class ApplicationFields(BaseModel):
     url: str | None = Field(default=None, max_length=2048)
     status: ApplicationStatus = ApplicationStatus.applied
     follow_up_date: date | None = None
+    applied_on: date | None = None  # defaults to today when not sent
     notes: str | None = Field(default=None, max_length=2000)
 
     # mode="before" runs before the length checks, so "   " fails min_length.
@@ -83,6 +84,13 @@ class ApplicationFields(BaseModel):
     def empty_notes_to_null(cls, value):
         return value or None
 
+    @field_validator("applied_on")
+    @classmethod
+    def applied_on_not_in_future(cls, value):
+        if value is not None and value > date.today():
+            raise ValueError("can't be in the future")
+        return value
+
 
 class ApplicationCreate(ApplicationFields):
     pass
@@ -98,7 +106,7 @@ class ApplicationUpdate(ApplicationFields):
     def check_fields(self):
         if not self.model_fields_set:
             raise ValueError("send at least one field to update")
-        for name in ("company", "role", "status"):
+        for name in ("company", "role", "status", "applied_on"):
             if name in self.model_fields_set and getattr(self, name) is None:
                 raise ValueError(f"{name} cannot be empty")
         return self
@@ -118,6 +126,7 @@ class ApplicationOut(BaseModel):
     url: str | None
     status: ApplicationStatus
     follow_up_date: date | None
+    applied_on: date
     notes: str | None
     follow_up_due: bool
     created_at: datetime
@@ -126,6 +135,37 @@ class ApplicationOut(BaseModel):
 
 class ApplicationList(BaseModel):
     items: list[ApplicationOut]
+
+
+class WeekCount(BaseModel):
+    week_start: date  # Monday
+    count: int
+
+
+class StatsOut(BaseModel):
+    total: int
+    by_status: dict[str, int]  # current status
+    responded: int    # ever moved past Applied (interview, offer or rejection)
+    interviewed: int  # ever reached Interview or Offer
+    offers: int       # ever reached Offer
+    response_rate: float   # 0..1 of total
+    interview_rate: float  # 0..1 of total
+    offer_rate: float      # 0..1 of total
+    weekly: list[WeekCount]  # last 12 weeks by applied_on, oldest first, zeros included
+
+
+class ImportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    csv: str = Field(min_length=1, max_length=1_000_000)
+
+
+class ImportRowError(BaseModel):
+    row: int  # spreadsheet row number (header is row 1)
+    message: str
+
+
+class ImportResult(BaseModel):
+    imported: int
 
 
 class HealthOut(BaseModel):

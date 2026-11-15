@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
-  title: Job Application Tracker API
-  version: 1.0.0
+  title: HirePath API
+  version: 1.1.0
   description: |
     JSON API for tracking job applications. Every application belongs to one user,
     and a user can only read or change their own applications.
@@ -104,6 +104,10 @@ components:
         follow_up_date:
           type: [string, "null"]
           format: date
+        applied_on:
+          type: [string, "null"]
+          format: date
+          description: When you applied. Defaults to today; can't be in the future.
         notes:
           type: [string, "null"]
           maxLength: 2000
@@ -119,11 +123,12 @@ components:
         url: { type: [string, "null"], maxLength: 2048 }
         status: { $ref: "#/components/schemas/ApplicationStatus" }
         follow_up_date: { type: [string, "null"], format: date }
+        applied_on: { type: string, format: date }
         notes: { type: [string, "null"], maxLength: 2000 }
 
     Application:
       type: object
-      required: [id, company, role, url, status, follow_up_date, notes, follow_up_due, created_at, updated_at]
+      required: [id, company, role, url, status, follow_up_date, applied_on, notes, follow_up_due, created_at, updated_at]
       properties:
         id: { type: integer }
         company: { type: string }
@@ -131,6 +136,7 @@ components:
         url: { type: [string, "null"] }
         status: { $ref: "#/components/schemas/ApplicationStatus" }
         follow_up_date: { type: [string, "null"], format: date }
+        applied_on: { type: string, format: date }
         notes: { type: [string, "null"] }
         follow_up_due:
           type: boolean
@@ -145,6 +151,50 @@ components:
         items:
           type: array
           items: { $ref: "#/components/schemas/Application" }
+
+    Stats:
+      type: object
+      required: [total, by_status, responded, interviewed, offers, response_rate, interview_rate, offer_rate, weekly]
+      properties:
+        total: { type: integer }
+        by_status:
+          type: object
+          description: Count of applications by their current status.
+          additionalProperties: { type: integer }
+        responded: { type: integer, description: Ever moved past Applied (interview, offer or rejection). }
+        interviewed: { type: integer, description: Ever reached Interview or Offer, even if later rejected. }
+        offers: { type: integer, description: Ever reached Offer. }
+        response_rate: { type: number, minimum: 0, maximum: 1 }
+        interview_rate: { type: number, minimum: 0, maximum: 1 }
+        offer_rate: { type: number, minimum: 0, maximum: 1 }
+        weekly:
+          type: array
+          description: Applications per week (by applied_on) for the last 12 weeks, oldest first, empty weeks included.
+          items:
+            type: object
+            required: [week_start, count]
+            properties:
+              week_start: { type: string, format: date, description: The Monday of that week. }
+              count: { type: integer }
+
+    ImportRequest:
+      type: object
+      additionalProperties: false
+      required: [csv]
+      properties:
+        csv:
+          type: string
+          minLength: 1
+          maxLength: 1000000
+          description: |
+            CSV text. First row is headers; company and role are required. Optional: status,
+            applied_on, follow_up_date (YYYY-MM-DD), url, notes. Up to 500 rows.
+
+    ImportResult:
+      type: object
+      required: [imported]
+      properties:
+        imported: { type: integer }
 
   responses:
     ValidationError:
@@ -173,7 +223,7 @@ components:
 paths:
   /health:
     get:
-      summary: Liveness check (used by Render)
+      summary: Liveness check
       responses:
         "200":
           description: Service is running.
@@ -267,6 +317,56 @@ paths:
               schema: { $ref: "#/components/schemas/Application" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "422": { $ref: "#/components/responses/ValidationError" }
+
+  /applications/stats:
+    get:
+      summary: Totals, response/interview/offer rates and applications per week
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Stats for the current user's applications.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Stats" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /applications/export:
+    get:
+      summary: Download all of the current user's applications as CSV
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: |
+            CSV file with columns company, role, status, applied_on, follow_up_date, url, notes.
+            Cells that start with =, +, - or @ are prefixed with ' so spreadsheets don't run them as formulas.
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /applications/import:
+    post:
+      summary: Import applications from CSV (all or nothing)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportRequest" }
+      responses:
+        "201":
+          description: Every row was imported.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422":
+          description: |
+            Nothing was imported. `details` lists each problem as {"field": "row N", "message": ...}
+            (N is the spreadsheet row; the header is row 1).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
 
   /applications/{application_id}:
     parameters:
