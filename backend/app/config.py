@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
-load_dotenv()  # Does nothing if there is no .env file (e.g. on Render).
+load_dotenv()  # Does nothing if there is no .env file (e.g. when env vars are set by the host).
 
 
 @dataclass(frozen=True)
