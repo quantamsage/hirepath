@@ -157,3 +157,58 @@ textarea { resize: vertical; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---- Navigation ---- */
+.topbar-nav { display: flex; gap: 1.25rem; }
+.topbar-nav a { color: var(--ink-soft); text-decoration: none; font-weight: 600; padding: 0.25rem 0; border-bottom: 2px solid transparent; }
+.topbar-nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
+
+/* ---- CSV import / export ---- */
+.board-actions { display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; }
+.csv-tools { display: grid; gap: 0.5rem; }
+.csv-buttons { display: flex; gap: 0.5rem; }
+.csv-message {
+  max-width: 34rem; padding: 0.75rem 1rem; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 0.9rem;
+}
+.csv-message p { margin: 0 0 0.25rem; }
+.csv-message ul { margin: 0.25rem 0 0.5rem; padding-left: 1.2rem; color: var(--due); }
+.csv-hint { color: var(--ink-soft); font-size: 0.8rem; }
+
+/* ---- Stats page ---- */
+.stats { display: grid; gap: 1.5rem; }
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; }
+.stat-tile {
+  display: grid; gap: 0.15rem; padding: 1rem 1.25rem; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--radius-md);
+}
+.stat-value { font-family: var(--font-display); font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-label { color: var(--ink-soft); font-size: 0.9rem; }
+.stat-panel { padding: 1.25rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.stat-panel h2 { font-size: 1.1rem; margin-bottom: 0.75rem; }
+.muted { color: var(--ink-soft); font-size: 0.85rem; margin-top: 0; }
+
+.funnel { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.funnel-step { display: grid; grid-template-columns: 7rem 1fr 6.5rem; align-items: center; gap: 0.75rem; }
+.funnel-track { height: 1.25rem; background: var(--paper); border-radius: var(--radius-sm); overflow: hidden; }
+.funnel-bar { display: block; height: 100%; background: var(--tone); border-radius: var(--radius-sm); }
+.funnel-value { text-align: right; font-variant-numeric: tabular-nums; }
+.tone-applied { --tone: var(--applied); }
+.tone-interview { --tone: var(--interview); }
+.tone-offer { --tone: var(--offer); }
+.tone-rejected { --tone: var(--rejected); }
+
+.weekly { display: grid; grid-template-columns: repeat(12, 1fr); gap: 0.4rem; height: 12rem; align-items: end; }
+.weekly-col { display: grid; grid-template-rows: auto 1fr auto; height: 100%; text-align: center; }
+.weekly-col .weekly-bar { align-self: end; display: block; background: var(--applied); border-radius: var(--radius-sm) var(--radius-sm) 0 0; min-height: 2px; }
+.weekly-count { font-size: 0.8rem; font-variant-numeric: tabular-nums; min-height: 1.2em; }
+.weekly-label { font-size: 0.7rem; color: var(--ink-soft); padding-top: 0.25rem; white-space: nowrap; }
+
+.status-now { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.status-now li { --status: var(--ink); display: flex; align-items: baseline; gap: 0.4rem; }
+
+@media (max-width: 640px) {
+  .funnel-step { grid-template-columns: 5.5rem 1fr 5rem; gap: 0.5rem; }
+  .weekly-label { writing-mode: vertical-rl; transform: rotate(180deg); }
+  .topbar-email { display: none; }
+}

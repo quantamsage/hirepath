@@ -1,5 +1,5 @@
 // The only place the frontend talks to the backend. No database access, no secrets.
-import type { Application, ApplicationInput, Token, User, FieldError } from "./types";
+import type { Application, ApplicationInput, FieldError, Stats, Token, User } from "./types";
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
 const TOKEN_KEY = "jobtracker_token";
@@ -32,7 +32,7 @@ export function clearToken(): void {
 
 // ----- Request helper -----
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function send(path: string, options: RequestInit = {}): Promise<Response> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -41,26 +41,27 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   try {
     response = await fetch(`${API_URL}${path}`, { ...options, headers });
   } catch {
-    throw new ApiError(
-      0,
-      "network_error",
-      "Can't reach the server. If it was asleep it can take up to a minute to wake up, so try again shortly.",
-    );
+    throw new ApiError(0, "network_error", "Can't reach the server. Check it's running and try again.");
   }
+  if (!response.ok) await throwApiError(response);
+  return response;
+}
 
-  if (response.status === 204) return undefined as T;
-
+async function throwApiError(response: Response): Promise<never> {
   const body = await response.json().catch(() => null);
-  if (!response.ok) {
-    const error = body?.error;
-    throw new ApiError(
-      response.status,
-      error?.code ?? "unknown_error",
-      error?.message ?? "Something went wrong. Please try again.",
-      error?.details ?? [],
-    );
-  }
-  return body as T;
+  const error = body?.error;
+  throw new ApiError(
+    response.status,
+    error?.code ?? "unknown_error",
+    error?.message ?? "Something went wrong. Please try again.",
+    error?.details ?? [],
+  );
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const response = await send(path, options);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
 }
 
 // ----- Endpoints -----
@@ -83,4 +84,12 @@ export const api = {
     request<Application>(`/applications/${id}`, { method: "PATCH", body: JSON.stringify(changes) }),
 
   deleteApplication: (id: number) => request<void>(`/applications/${id}`, { method: "DELETE" }),
+
+  getStats: () => request<Stats>("/applications/stats"),
+
+  /** The CSV as a Blob, ready to save. Fetched with the token, so a plain link won't do. */
+  exportCsv: async () => (await send("/applications/export")).blob(),
+
+  importCsv: (csv: string) =>
+    request<{ imported: number }>("/applications/import", { method: "POST", body: JSON.stringify({ csv }) }),
 };

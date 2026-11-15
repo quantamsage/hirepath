@@ -10,6 +10,7 @@ export type Application = {
   url: string | null;
   status: ApplicationStatus;
   follow_up_date: string | null; // "YYYY-MM-DD"
+  applied_on: string; // "YYYY-MM-DD"
   notes: string | null;
   follow_up_due: boolean; // computed by the backend
   created_at: string;
@@ -22,7 +23,20 @@ export type ApplicationInput = {
   url: string | null;
   status: ApplicationStatus;
   follow_up_date: string | null;
+  applied_on?: string | null; // omitted or null on create = today
   notes: string | null;
+};
+
+export type Stats = {
+  total: number;
+  by_status: Record<ApplicationStatus, number>;
+  responded: number;
+  interviewed: number;
+  offers: number;
+  response_rate: number;
+  interview_rate: number;
+  offer_rate: number;
+  weekly: { week_start: string; count: number }[];
 };
 
 export type User = { id: number; email: string };
