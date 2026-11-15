@@ -17,6 +17,7 @@ function toForm(app: Application | null) {
     url: app?.url ?? "",
     status: app?.status ?? ("Applied" as ApplicationStatus),
     follow_up_date: app?.follow_up_date ?? "",
+    applied_on: app?.applied_on ?? new Date().toLocaleDateString("en-CA"), // YYYY-MM-DD, local time
     notes: app?.notes ?? "",
   };
 }
@@ -50,6 +51,7 @@ export default function ApplicationDialog({ application, onSave, onClose }: Prop
         url: form.url.trim() || null,
         status: form.status,
         follow_up_date: form.follow_up_date || null,
+        applied_on: form.applied_on || null,
         notes: form.notes.trim() || null,
       });
     } catch (err) {
@@ -101,6 +103,15 @@ export default function ApplicationDialog({ application, onSave, onClose }: Prop
             </select>
             {fieldError("status")}
           </label>
+          <label>
+            Applied on
+            <input type="date" value={form.applied_on} max={new Date().toLocaleDateString("en-CA")}
+              onChange={(e) => update("applied_on", e.target.value)} />
+            {fieldError("applied_on")}
+          </label>
+        </div>
+
+        <div className="field-row">
           <label>
             <span>Follow up on <span className="optional">(optional)</span></span>
             <input type="date" value={form.follow_up_date}
